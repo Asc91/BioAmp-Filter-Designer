@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 usage_guide = """\
-
 This script generates complete filter implementations (not just coefficients) for
 digital IIR filters using the SciPy signal processing library. It uses the
 well-known Butterworth design which optimizes flat frequency response.
@@ -38,7 +37,6 @@ https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html
 https://docs.scipy.org/doc/scipy/reference/tutorial/signal.html
 https://en.wikipedia.org/wiki/Butterworth_filter
 https://en.wikipedia.org/wiki/Digital_filter#Direct_form_II
-
 """
 
 ################################################################
@@ -74,6 +72,7 @@ def make_plots(filename, sos, fs, order, freqs, name):
     ax.set_title(f"Response of {freqs} Hz {name} Filter of Order {order}")
     ax.set_xlabel("Frequency (Hz)")
     ax.set_ylabel("Magnitude of Transfer Ratio")
+
     fig.savefig(filename)
 
 ################################################################
@@ -109,12 +108,25 @@ def emit_python_filter(stream, name, sos, filter_type, fs, freqs, order):
         stream.write(f"        self.z1_{i} = x\n")
 
     stream.write("\n        return output\n\n")
+
     stream.write("    def reset(self):\n")
     stream.write("        \"\"\"Reset filter state variables\"\"\"\n")
-
     for i in range(sections):
         stream.write(f"        self.z1_{i} = 0.0\n")
         stream.write(f"        self.z2_{i} = 0.0\n")
+
+    # Add simple example usage
+    stream.write("\n\n# Example usage:\n")
+    stream.write("# Single channel:\n")
+    stream.write(f"# filter = {name}()\n")
+    stream.write("# filter.reset()\n")
+    stream.write("# filtered_output = filter.process(sample)\n")
+    stream.write("# \n")
+    stream.write("# Multi-channel (3 channels):\n")
+    stream.write(f"# filters = [{name}() for _ in range(3)]  # One filter per channel\n")
+    stream.write("# filtered_1 = filters[0].process(raw1)\n")
+    stream.write("# filtered_2 = filters[1].process(raw2)\n")
+    stream.write("# filtered_3 = filters[2].process(raw3)\n")
 
 ################################################################
 def emit_cpp_filter(stream, name, sos, filter_type, fs, freqs, order):
@@ -126,6 +138,8 @@ def emit_cpp_filter(stream, name, sos, filter_type, fs, freqs, order):
     stream.write(f"// Sampling rate: {fs} Hz, frequency: {freqs} Hz\n")
     stream.write(f"// Filter is order {order}, implemented as second-order sections (biquads)\n")
     stream.write("// Reference: https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html\n\n")
+
+    stream.write("#include <iostream>\n\n")
 
     stream.write(f"class {name} {{\n")
     stream.write("private:\n")
@@ -148,13 +162,25 @@ def emit_cpp_filter(stream, name, sos, filter_type, fs, freqs, order):
 
     stream.write("\n        return output;\n")
     stream.write("    }\n\n")
-    stream.write("    void reset() {\n")
 
+    stream.write("    void reset() {\n")
     for i in range(sections):
         stream.write(f"        state{i}.z1 = state{i}.z2 = 0;\n")
-
     stream.write("    }\n")
-    stream.write("};\n")
+    stream.write("};\n\n")
+
+    # Add simple example usage
+    stream.write("// Example usage:\n")
+    stream.write("// Single channel:\n")
+    stream.write(f"// {name} filter;\n")
+    stream.write("// filter.reset();\n")
+    stream.write("// float filtered_output = filter.process(sample);\n")
+    stream.write("// \n")
+    stream.write("// Multi-channel (3 channels):\n")
+    stream.write(f"// {name} filters[3];  // One filter per channel\n")
+    stream.write("// float filtered_1 = filters[0].process(raw1);\n")
+    stream.write("// float filtered_2 = filters[1].process(raw2);\n")
+    stream.write("// float filtered_3 = filters[2].process(raw3);\n")
 
 ################################################################
 def emit_javascript_filter(stream, name, sos, filter_type, fs, freqs, order):
@@ -176,6 +202,7 @@ def emit_javascript_filter(stream, name, sos, filter_type, fs, freqs, order):
         stream.write(f"        this.z2_{i} = 0.0;\n")
 
     stream.write("    }\n\n")
+
     stream.write("    process(inputSample) {\n")
     stream.write("        let output = inputSample;\n")
 
@@ -189,14 +216,26 @@ def emit_javascript_filter(stream, name, sos, filter_type, fs, freqs, order):
 
     stream.write("\n        return output;\n")
     stream.write("    }\n\n")
-    stream.write("    reset() {\n")
 
+    stream.write("    reset() {\n")
     for i in range(sections):
         stream.write(f"        this.z1_{i} = 0.0;\n")
         stream.write(f"        this.z2_{i} = 0.0;\n")
-
     stream.write("    }\n")
-    stream.write("}\n")
+    stream.write("}\n\n")
+
+    # Add simple example usage
+    stream.write("// Example usage:\n")
+    stream.write("// Single channel:\n")
+    stream.write(f"// const filter = new {name}();\n")
+    stream.write("// filter.reset();\n")
+    stream.write("// const filtered_output = filter.process(sample);\n")
+    stream.write("// \n")
+    stream.write("// Multi-channel (3 channels):\n")
+    stream.write(f"// const filters = Array(3).fill().map(() => new {name}());  // One filter per channel\n")
+    stream.write("// const filtered_1 = filters[0].process(raw1);\n")
+    stream.write("// const filtered_2 = filters[1].process(raw2);\n")
+    stream.write("// const filtered_3 = filters[2].process(raw3);\n")
 
 ################################################################
 def emit_typescript_filter(stream, name, sos, filter_type, fs, freqs, order):
@@ -216,6 +255,7 @@ def emit_typescript_filter(stream, name, sos, filter_type, fs, freqs, order):
         stream.write(f"    private z2_{i}: number = 0.0;\n")
 
     stream.write("\n")
+
     stream.write("    process(inputSample: number): number {\n")
     stream.write("        let output: number = inputSample;\n")
 
@@ -229,14 +269,26 @@ def emit_typescript_filter(stream, name, sos, filter_type, fs, freqs, order):
 
     stream.write("\n        return output;\n")
     stream.write("    }\n\n")
-    stream.write("    reset(): void {\n")
 
+    stream.write("    reset(): void {\n")
     for i in range(sections):
         stream.write(f"        this.z1_{i} = 0.0;\n")
         stream.write(f"        this.z2_{i} = 0.0;\n")
-
     stream.write("    }\n")
-    stream.write("}\n")
+    stream.write("}\n\n")
+
+    # Add simple example usage
+    stream.write("// Example usage:\n")
+    stream.write("// Single channel:\n")
+    stream.write(f"// const filter: {name} = new {name}();\n")
+    stream.write("// filter.reset();\n")
+    stream.write("// const filtered_output: number = filter.process(sample);\n")
+    stream.write("// \n")
+    stream.write("// Multi-channel (3 channels):\n")
+    stream.write(f"// const filters: {name}[] = Array(3).fill(null).map(() => new {name}());  // One filter per channel\n")
+    stream.write("// const filtered_1: number = filters[0].process(raw1);\n")
+    stream.write("// const filtered_2: number = filters[1].process(raw2);\n")
+    stream.write("// const filtered_3: number = filters[2].process(raw3);\n")
 
 ################################################################
 def emit_java_filter(stream, name, sos, filter_type, fs, freqs, order):
@@ -256,6 +308,7 @@ def emit_java_filter(stream, name, sos, filter_type, fs, freqs, order):
         stream.write(f"    private double z2_{i} = 0.0;\n")
 
     stream.write("\n")
+
     stream.write("    public double process(double inputSample) {\n")
     stream.write("        double output = inputSample;\n")
 
@@ -269,14 +322,27 @@ def emit_java_filter(stream, name, sos, filter_type, fs, freqs, order):
 
     stream.write("\n        return output;\n")
     stream.write("    }\n\n")
-    stream.write("    public void reset() {\n")
 
+    stream.write("    public void reset() {\n")
     for i in range(sections):
         stream.write(f"        this.z1_{i} = 0.0;\n")
         stream.write(f"        this.z2_{i} = 0.0;\n")
-
     stream.write("    }\n")
-    stream.write("}\n")
+    stream.write("}\n\n")
+
+    # Add simple example usage
+    stream.write("// Example usage:\n")
+    stream.write("// Single channel:\n")
+    stream.write(f"// {name} filter = new {name}();\n")
+    stream.write("// filter.reset();\n")
+    stream.write("// double filtered_output = filter.process(sample);\n")
+    stream.write("// \n")
+    stream.write("// Multi-channel (3 channels):\n")
+    stream.write(f"// {name}[] filters = new {name}[3];  // One filter per channel\n")
+    stream.write("// for(int i = 0; i < 3; i++) filters[i] = new {name}();\n")
+    stream.write("// double filtered_1 = filters[0].process(raw1);\n")
+    stream.write("// double filtered_2 = filters[1].process(raw2);\n")
+    stream.write("// double filtered_3 = filters[2].process(raw3);\n")
 
 ################################################################
 def emit_filter_code(stream, name, sos, filter_type, fs, freqs, order, language):
@@ -295,12 +361,12 @@ def emit_filter_code(stream, name, sos, filter_type, fs, freqs, order, language)
 ################################################################
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="""Generate complete filter implementations for Butterworth IIR digital filters.""",
-                                     formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog=usage_guide)
+                                   formatter_class=argparse.RawDescriptionHelpFormatter,
+                                   epilog=usage_guide)
 
     parser.add_argument('--type', default='lowpass', type=str,
-                        choices = ['lowpass', 'highpass', 'bandpass', 'bandstop'],
-                        help = 'Filter type: lowpass, highpass, bandpass, bandstop (default lowpass).')
+                       choices = ['lowpass', 'highpass', 'bandpass', 'bandstop'],
+                       help = 'Filter type: lowpass, highpass, bandpass, bandstop (default lowpass).')
 
     parser.add_argument('--rate', default=10, type=float, help = 'Sampling frequency in Hz (default 10).')
 
@@ -313,8 +379,8 @@ if __name__ == "__main__":
     parser.add_argument('--name', type=str, help = 'Name of filter class/function.')
 
     parser.add_argument('--language', default='python', type=str,
-                        choices=['python', 'c++', 'javascript', 'typescript', 'java'],
-                        help='Output language (default python).')
+                       choices=['python', 'c++', 'javascript', 'typescript', 'java'],
+                       help='Output language (default python).')
 
     parser.add_argument('--out', type=str, help='Path of output file for filter code.')
 
