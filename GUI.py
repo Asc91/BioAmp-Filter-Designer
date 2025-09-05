@@ -23,7 +23,7 @@ class FilterThread(QThread):
 
     def run(self):
         try:
-            result = subprocess.run(self.command, shell=True, capture_output=True, text=True)
+            result = subprocess.run(self.command, capture_output=True, text=True)
             if result.returncode == 0:
                 self.finished.emit("Filter generated successfully!")
             else:
@@ -653,31 +653,32 @@ class ModernFilterGUI(QMainWindow):
 
     def build_command(self):
         """Build the command for filter_gen.py"""
-        cmd_parts = ['python3 filter_gen.py']
-        cmd_parts.append(f'--type {self.filter_type.currentText()}')
-        cmd_parts.append(f'--rate {self.sampling_rate.value()}')
-        cmd_parts.append(f'--order {self.filter_order.value()}')
-        cmd_parts.append(f'--freq {self.critical_freq.value()}')
+        script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'filter_gen.py')
+        cmd_parts = [sys.executable, script_path,
+            '--type', self.filter_type.currentText(),
+            '--rate', str(self.sampling_rate.value()),
+            '--order', str(self.filter_order.value()),
+            '--freq', str(self.critical_freq.value())]
 
         if self.filter_type.currentText() in ['bandpass', 'bandstop']:
-            cmd_parts.append(f'--width {self.bandwidth.value()}')
+            cmd_parts += ['--width', str(self.bandwidth.value())]
 
         if self.class_name.text().strip():
-            cmd_parts.append(f'--name "{self.class_name.text().strip()}"')
+            cmd_parts += ['--name', self.class_name.text().strip()]
 
         language = self.output_language.currentText().lower()
-        cmd_parts.append(f'--language {language}')
+        cmd_parts += ['--language', language]
 
         filename = self.file_name.text().strip()
         if filename:
             extension = self.get_file_extension()
-            cmd_parts.append(f'--out "{filename}{extension}"')
+            cmd_parts += ['--out', f'{filename}{extension}']
 
         if self.generate_plot.isChecked():
             plot_filename = filename if filename else self.filter_type.currentText()
-            cmd_parts.append(f'--plot "{plot_filename}_response.png"')
+            cmd_parts += ['--plot', f'{plot_filename}_response.png']
 
-        return ' '.join(cmd_parts)
+        return cmd_parts
 
     def generate_filter(self):
         """Generate the filter"""
