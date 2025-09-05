@@ -23,13 +23,13 @@ class FilterThread(QThread):
 
     def run(self):
         try:
-            result = subprocess.run(self.command, capture_output=True, text=True)
+            result = subprocess.run(self.command, shell=False, capture_output=True, text=True)
             if result.returncode == 0:
-                self.finished.emit("Filter generated successfully!")
+                self.finished.emit(result.stdout.strip() or "Filter generated successfully!")
             else:
-                self.error.emit(f"Error: {result.stderr}")
-        except Exception as e:
-            self.error.emit(f"Error: {str(e)}")
+                self.error.emit(f"Error: {result.stderr.strip()}")
+        except (OSError, subprocess.SubprocessError) as e:
+            self.error.emit(f"Error: {e!s}")
 
 class InfoButton(QLabel):
     """Custom info button with consistent styling"""
@@ -671,8 +671,12 @@ class ModernFilterGUI(QMainWindow):
 
         filename = self.file_name.text().strip()
         if filename:
-            extension = self.get_file_extension()
-            cmd_parts += ['--out', f'{filename}{extension}']
+            base, ext = os.path.splitext(filename)
+            out_path = filename if ext else base + self.get_file_extension()
+            self._out_path = out_path
+            cmd_parts += ['--out', out_path]
+        else:
+            self._out_path = None
 
         if self.generate_plot.isChecked():
             plot_filename = filename if filename else self.filter_type.currentText()
@@ -702,15 +706,12 @@ class ModernFilterGUI(QMainWindow):
         self.status_text.append(f"✓ {message}")
 
         # Try to load and display the generated code
-        filename = self.file_name.text().strip()
-        if filename:
-            extension = self.get_file_extension()
-            filepath = f"{filename}{extension}"
+        if hasattr(self, '_out_path') and self._out_path:
             try:
-                with open(filepath, 'r') as f:
+                with open(self._out_path, 'r') as f:
                     code = f.read()
                 self.code_preview.setText(code)
-                self.status_text.append(f"Generated file: {filepath}")
+                self.status_text.append(f"Generated file: {self._out_path}")
             except FileNotFoundError:
                 self.status_text.append("Warning: Generated file not found for preview")
             except Exception as e:
@@ -718,6 +719,7 @@ class ModernFilterGUI(QMainWindow):
 
         # Check if plot was generated
         if self.generate_plot.isChecked():
+            filename = self.file_name.text().strip()
             plot_filename = filename if filename else self.filter_type.currentText()
             plot_path = f"{plot_filename}_response.png"
             if os.path.exists(plot_path):
